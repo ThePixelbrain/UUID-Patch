@@ -1,16 +1,19 @@
 package dev.pixelbrain.uuidpatch.mixins;
 
-import com.mojang.authlib.GameProfile;
-import dev.pixelbrain.uuidpatch.UUIDPatch;
 import net.minecraft.network.login.client.C00PacketLoginStart;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.PlayerProfileCache;
 import net.minecraft.server.network.NetHandlerLoginServer;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import com.mojang.authlib.GameProfile;
+
+import dev.pixelbrain.uuidpatch.UUIDPatch;
 
 @Mixin(NetHandlerLoginServer.class)
 public abstract class NetHandlerLoginServerMixin {
@@ -39,10 +42,12 @@ public abstract class NetHandlerLoginServerMixin {
             return;
         }
 
-        if (profile.getProperties().isEmpty()) {
+        if (profile.getProperties()
+            .isEmpty()) {
             UUIDPatch.LOG.info(this.makeProfileMessage(profile) + " is not cached, fetching from Mojang");
 
-            profile = server.func_147130_as().fillProfileProperties(profile, true);
+            profile = server.func_147130_as()
+                .fillProfileProperties(profile, true);
             profileCache.func_152649_a(profile);
         } else {
             UUIDPatch.LOG.info(this.makeProfileMessage(profile) + " is cached, using that");
