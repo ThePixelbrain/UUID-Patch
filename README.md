@@ -6,10 +6,15 @@ Requires a 1.7.10 mixin loader like [GTNHMixins](https://github.com/GTNewHorizon
 [UniMixins](https://github.com/LegacyModdingMC/UniMixins).
 
 ## How to use
-Set server to `online-mode=true` in `server.properties` and add the mod to the server. `online-mode=false` might
-work but is not recommend. It should not make a difference, because the mod skips authentication anyway.
+1. Download the lastest version from the [releases](https://github.com/ThePixelbrain/UUID-Patch/releases)
+2. Download a 1.7.10 Mixin Loader like [GTNHMixins](https://github.com/GTNewHorizons/GTNHMixins) or
+   [UniMixins](https://github.com/LegacyModdingMC/UniMixins)
+3. Put the mixin loader and the mod into the mods directory of your Forge server
+4. Set server to `online-mode=false` in `server.properties`. If online mode is activated, the mod is transparent and does nothing.
+5. Delete `usercache.json` and `usernamecache.json` to clear locally cached UUIDs
 
-**Therefore, use the mod only if your server is private or behind a proxy!**
+
+**Warning! Setting your server to offline mode disables authentication! Therefore, the mod should only be used if your server is private or behind a proxy!**
 
 
 ## How it works

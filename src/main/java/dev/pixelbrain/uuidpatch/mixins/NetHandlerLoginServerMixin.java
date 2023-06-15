@@ -1,10 +1,10 @@
 package dev.pixelbrain.uuidpatch.mixins;
 
-import net.minecraft.network.login.client.C00PacketLoginStart;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.PlayerProfileCache;
 import net.minecraft.server.network.NetHandlerLoginServer;
 
+import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.mojang.authlib.GameProfile;
 
+import dev.pixelbrain.uuidpatch.Config;
 import dev.pixelbrain.uuidpatch.UUIDPatch;
 
 @Mixin(NetHandlerLoginServer.class)
@@ -24,38 +25,54 @@ public abstract class NetHandlerLoginServerMixin {
     @Shadow
     public void func_147322_a(String reason) {}
 
-    @Shadow
-    public void func_147326_c() {}
-
-    @Inject(method = "processLoginStart", at = @At(value = "HEAD"), cancellable = true)
-    private void processLoginStart(final C00PacketLoginStart packetIn, final CallbackInfo cir) {
-        this.field_147337_i = packetIn.func_149304_c();
-
-        final MinecraftServer server = MinecraftServer.getServer();
-        final PlayerProfileCache profileCache = server.func_152358_ax();
-        GameProfile profile = profileCache.func_152655_a(this.field_147337_i.getName());
-        if (profile == null) {
-            UUIDPatch.LOG.info("No UUID found for player " + this.field_147337_i.getName());
-
-            this.func_147322_a("Username name does not exist!");
-            cir.cancel();
+    @Inject(
+        method = "func_147326_c",
+        at = @At(
+            value = "FIELD",
+            target = "Lnet/minecraft/server/network/NetHandlerLoginServer;field_147337_i:Lcom/mojang/authlib/GameProfile;",
+            opcode = Opcodes.PUTFIELD),
+        cancellable = true)
+    private void getOnlineUUIDInOfflineMode(CallbackInfo ci) {
+        if (MinecraftServer.getServer()
+            .isServerInOnlineMode()) {
             return;
         }
 
-        if (profile.getProperties()
-            .isEmpty()) {
-            UUIDPatch.LOG.info(this.makeProfileMessage(profile) + " is not cached, fetching from Mojang");
+        final String username = field_147337_i.getName();
+        final PlayerProfileCache profileCache = MinecraftServer.getServer()
+            .func_152358_ax();
+        // Get profile from cache or Mojang servers if not cached
+        GameProfile profile = profileCache.func_152655_a(username);
 
-            profile = server.func_147130_as()
-                .fillProfileProperties(profile, true);
-            profileCache.func_152649_a(profile);
-        } else {
-            UUIDPatch.LOG.info(this.makeProfileMessage(profile) + " is cached, using that");
+        if (profile != null) {
+            UUIDPatch.LOG.info(this.makeProfileMessage(profile) + " found online or in profile cache");
+
+            // Get profile properties (e.g. skin and cape)
+            if (profile.getProperties()
+                .isEmpty()) {
+                UUIDPatch.LOG.debug(
+                    "Properties for " + this.makeProfileMessage(profile) + " are not cached, fetching from Mojang");
+
+                profile = MinecraftServer.getServer()
+                    .func_147130_as()
+                    .fillProfileProperties(profile, true);
+                profileCache.func_152649_a(profile);
+            } else {
+                UUIDPatch.LOG.debug("Properties for " + this.makeProfileMessage(profile) + " are cached, using that");
+            }
+
+            this.field_147337_i = profile;
+            ci.cancel();
+            return;
         }
 
-        this.field_147337_i = profile;
-        this.func_147326_c();
-        cir.cancel();
+        if (!Config.allowOfflinePlayers) {
+            this.func_147322_a("Username does not exist or Mojang servers could not be reached!");
+            ci.cancel();
+            return;
+        }
+
+        UUIDPatch.LOG.info("No online uuid found for username " + username + ", generating an offline one.");
     }
 
     private String makeProfileMessage(final GameProfile profile) {
